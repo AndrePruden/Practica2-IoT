@@ -1,39 +1,39 @@
 import socket
 import threading
 
-# Configuración del servidor
-HOST = ''  # Escuchar en todas las interfaces
+# Server configuration
+HOST = ''  # Listen on all interfaces
 PORT = 10000
 
-# Crear el socket
+# Create the socket
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.bind((HOST, PORT))
 server_socket.listen(2)
 
-print(f'Servidor multihilo escuchando en el puerto {PORT}...')
+print(f'Multi-threaded server listening on port {PORT}...')
 
-# Lista para almacenar las conexiones de los clientes
+# List to store client connections
 clients = []
 
 def handle_client(conn, addr):
-    print(f'Conexión establecida con {addr}')
+    print(f'Connection established with {addr}')
     conn.settimeout(120)
     
     try:
         while True:
             data = conn.recv(1024).decode().strip()
             if not data:
-                print(f'Cliente {addr} desconectado')
+                print(f'Client {addr} disconnected')
                 break
 
-            print(f'Datos recibidos de {addr}: {data}')
+            print(f'Data received from {addr}: {data}')
 
             if "DISTANCE:" in data:
                 continue
 
             try:
                 distance = float(data)
-                print(f'Distancia válida recibida de {addr}: {distance}')
+                print(f'Valid distance received from {addr}: {distance}')
                 
                 if 5 <= distance <= 10:
                     broadcast(b'STATE 3\n')
@@ -45,39 +45,39 @@ def handle_client(conn, addr):
                     broadcast(b'STATE 0\n')
 
             except ValueError:
-                print("Error: Distancia no es un número válido")
+                print("Error: Distance is not a valid number")
 
     except ConnectionResetError:
-        print(f'Conexión con {addr} cerrada de manera abrupta')
-        # Enviar mensaje de reinicio a todos los clientes
+        print(f'Connection with {addr} abruptly closed')
+        # Send restart message to all clients
         broadcast(b'RESTART\n')
 
     finally:
         conn.close()
         clients.remove(conn)
-        print(f'Conexión cerrada con {addr}')
+        print(f'Connection closed with {addr}')
 
 def broadcast(message):
-    """Envía el mensaje a todos los clientes conectados (uC B)"""
+    """Sends the message to all connected clients (uC B)"""
     for client in clients:
         try:
             client.sendall(message)
         except:
-            print("Error enviando mensaje a un cliente")
+            print("Error sending message to a client")
 
 def reset_microcontrollers():
-    """Envía un comando de reinicio a los microcontroladores"""
-    reset_command = b'RESET\n'  # Comando para reiniciar los microcontroladores
+    """Sends a reset command to the microcontrollers"""
+    reset_command = b'RESET\n'  # Command to reset the microcontrollers
     broadcast(reset_command)
-    print("Comando de reinicio enviado a los microcontroladores.")
+    print("Reset command sent to the microcontrollers.")
 
 def accept_connections():
-    """Función para aceptar conexiones de múltiples clientes"""
+    """Function to accept multiple client connections"""
     while True:
         conn, addr = server_socket.accept()
         clients.append(conn)
         thread = threading.Thread(target=handle_client, args=(conn, addr))
         thread.start()
 
-# Iniciar la función que acepta conexiones
+# Start the function that accepts connections
 accept_connections()
